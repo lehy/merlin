@@ -144,7 +144,10 @@ If you do not use opam, change the two first expressions above to point to the s
     (push "<SHARE_DIR>/emacs/site-lisp" load-path) ; directory containing merlin.el
     (setq merlin-command "<BIN_DIR>/ocamlmerlin")  ; needed only if ocamlmerlin not already in your PATH
 
-`merlin-mode` will make use of `auto-complete-mode` (available by package.el and the MELPA repository) if is is installed.
+Optionally, to get nicer completion support, install [auto-complete mode](http://cx4a.org/software/auto-complete/)
+(`M-x package-install auto-complete`) and tell Merlin to start it automatically:
+
+    (setq merlin-use-auto-complete-mode t)
 
 Features
 --------
@@ -198,15 +201,20 @@ Main keybindings:
 
 - `C-c C-p` (`merlin-prev-phrase`) moves the point to the beginning of the previous phrase
 
-Moreover, you have regular auto-completion (M-TAB by default with
-emacs24) using completion-at-point. There is also auto-complete
-integration you can enable by setting merlin-use-auto-complete-mode to
-t:
+### Completion
 
-    (setq merlin-use-auto-complete-mode t)
+There are 2 ways ask Merlin to complete input:
 
-It will enable auto-complete mode with the merlin source in ML
-buffers. With this setting, you can use `C-c TAB` to force completion.
+- using `M-x completion-at-point`, bound by default to `M-C-i` and `M-TAB`
+- if [auto-complete mode](http://cx4a.org/software/auto-complete/) is installed
+(`M-x package-install auto-complete`) and `merlin-use-auto-complete-mode` is set,
+  + using `M-x merlin-try-completion` (by default `C-c TAB`)
+will bring up completions suggested by Merlin
+  + using `M-x auto-complete` will bring up completions suggested by
+Merlin in addition to other completions suggested by `auto-complete-mode`.
+
+By default, `completion-at-point` will open a new buffer to show completions if there are several.
+`auto-complete-mode` will open a popup under your input, in the same style as the Vim screenshot above.
 
 Merlin project
 ==============
