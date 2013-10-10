@@ -56,8 +56,20 @@
 ;; Customizable vars
 ;;
 
-(defcustom merlin-command "ocamlmerlin"
-  "The path to merlin in your installation."
+(defcustom merlin-command nil
+  "Name of the ocamlmerlin executable in your installation.
+
+This can be:
+- nil: a reasonable default value will be used
+- a bare command name, like \"ocamlmerlin.native\"
+- an absolute path, like \"/usr/bin/ocamlmerlin\".
+
+In the first two cases, Merlin will search for the command in
+directories specified by variable `merlin-command-search-path',
+using one of the suffixes in `merlin-command-suffixes'. In the
+third case (absolute directory), Merlin will only attempt to
+append the suffixes in `merlin-command-suffixes' for finding the
+command."
   :group 'merlin :type '(file))
 
 (defcustom merlin-completion-types t
@@ -137,6 +149,31 @@ In particular you can specify nil, meaning that the locked zone is not represent
 (defcustom merlin-locate-focus-new-window t
   "If non-nil, when locate opens a new window it will give it the focus."
   :group 'merlin :type 'boolean)
+
+(defcustom merlin-command-search-path
+  '("../_build/src"   ;; for using merlin.el directly from a git checkout
+    "../../../bin"    ;; installed in <prefix>/share/emacs/site-lisp/
+                      ;; (default 'make install' style)
+    "../../../../bin" ;; installed in <prefix>/share/<emacs-flavour>/site-lisp/merlin/ (Debian style)
+                      ;; or <prefix>/share/emacs/<version>/site-lisp/
+    exec-path)
+  "Search path for finding `merlin-command'.
+This is a list of directories.  Directory names can be absolute,
+or relative to the merlin.el file.  Variables and functions in
+this list can return a single directory, or a list of
+directories.  `exec-path' is Emacs's default search path for
+executables; it includes the PATH environment variable.  See also
+variable `merlin-command-suffixes'."
+  :type '(repeat (choice directory variable function)))
+
+(defcustom merlin-command-suffixes
+  '("" ".native" ".byte" exec-suffixes)
+  "Accepted suffixes for `merlin-command'.
+Useful values are the empty string \"\" and `exec-suffixes',
+which contains the default executable suffixes for your
+platform.
+See also variable `merlin-command-search-path'."
+  :type '(repeat (choice string variable function)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Internal variables ;;
@@ -339,6 +376,80 @@ For now it is a constant function (every buffer shares the same instance)."
   "Return the process name for the current buffer."
   (concat "merlin-" (merlin-get-buffer-instance-name)))
 
+(defconst merlin-el-directory (file-name-directory (or load-file-name (buffer-file-name)))
+  "Directory of this file (merlin.el).")
+
+(defun merlin-pipeline (x &rest args)
+  "Apply to X the composition of functions in ARGS, in order.
+merlin-pipeline X F1 F2 ... FN computes FN(...F2(F1(X)))."
+  (reduce (lambda (acc e) (funcall e acc)) args :initial-value x))
+
+(defun merlin-map-pipeline (seq &rest args)
+  "Apply to SEQ the element-by-element functions in ARGS.
+merlin-map-pipeline '(X1 X2 .. XM) F1 F2 ... FN computes
+'(FN(...F2(F1(X1))) FN(...F2(F1(X2))) ... FN(...F2(F1(XM))))."
+  (apply 'merlin-pipeline seq (mapcar (lambda (f) `(lambda (s) (mapcar ',f s))) args)))
+
+(defun merlin-deref-symbol (s)
+  "Return the symbol value of S, or S itself if it not a symbol."
+  (if (symbolp s) (symbol-value s) s))
+
+(defun merlin-apply-function (f)
+  "Return F (), or F itself if it is not a function."
+  (if (functionp f) (funcall f) f))
+
+(defun merlin-to-list (x)
+  "Return X itself, or a one-element list made of X if X is not a list."
+  (if (listp x) x (list x)))
+
+(defun merlin-flatten (seq)
+  "Flatten a list SEQ made of lists and non-lists.
+Lists are flattened non-recursively.  Non-lists are kept as is."
+  (apply 'append (mapcar 'merlin-to-list seq)))
+
+(defun merlin-filter-strings (seq)
+  "Return SEQ, filtering out non-string elements."
+  (remove-if-not 'stringp seq))
+
+(defun merlin-flatten-custom (x)
+  "Expand a list X made of strings, variables, and functions.
+Variables can be strings, or string lists.  Functions are expected
+to take no argument, and return a string or a string list.  In the
+returned list, elements which are not strings are omitted.
+
+This is useful for expanding the value of a user-customisable
+variable, like `merlin-command-search-path'."
+  (merlin-pipeline
+   (merlin-map-pipeline x 'merlin-deref-symbol 'merlin-apply-function)
+   'merlin-flatten 'merlin-filter-strings))
+
+(defun merlin-command-suffixes ()
+  "Return a list of suffixes for OCaml executables."
+  (merlin-flatten-custom (or merlin-command-suffixes '(""))))
+
+(defun merlin-command-search-path ()
+  "Return a list of absolute directories for finding variable `merlin-command'.
+This expands the customizable variable `merlin-command-search-path'."
+  (mapcar
+   (lambda (d) (expand-file-name d merlin-el-directory))
+   (merlin-flatten-custom (or merlin-command-search-path '(".")))))
+
+(defun merlin-command ()
+  "Command to invoke ocamlmerlin.
+See variable `merlin-command'."
+  (lexical-let* ((full-command (locate-file
+                                (or merlin-command "ocamlmerlin")
+                                (merlin-command-search-path)
+                                (merlin-command-suffixes))))
+    (message "Merlin: found command: %s" full-command)
+    (if (not full-command)
+        (message
+         (format "Could not find `merlin-command' '%s'.\nSearch path `merlin-command-search-path' is:\n%s\nAccepted suffixes are:\n%s"
+                 merlin-command
+                 (pp-to-string (merlin-command-search-path))
+                 (pp-to-string (merlin-command-suffixes)))))
+    full-command))
+
 (defun merlin-start-process (flags &optional users)
   "Start the merlin process for the current buffer.
 FLAGS are a list of strings denoting the parameters to be passed
@@ -347,14 +458,14 @@ buffer.  Return the process created"
   (get-buffer-create (merlin-get-process-buffer-name))
   (let ((p (apply #'start-file-process (merlin-get-process-name)
                          (merlin-get-process-buffer-name)
-                         merlin-command `("-protocol" "sexp" . ,flags)))
+                         (merlin-command) `("-protocol" "sexp" . ,flags)))
         (name (buffer-name)))
     (set (make-local-variable 'merlin-local-process) p)
     (dolist (buffer users)
       (message "Setting process for buffer %s" buffer)
       (with-current-buffer buffer
         (set (make-local-variable 'merlin-local-process) p)))
-    (merlin-debug (format "Running %s with flags %s\n" merlin-command flags))
+    (merlin-debug (format "Running %s with flags %s\n" (merlin-command) flags))
     (set-process-query-on-exit-flag p nil)
     (push p merlin-processes)
 ; don't forget to initialize temporary variable
@@ -1202,7 +1313,7 @@ Returns the position."
   (interactive)
   (message "%s" (replace-regexp-in-string
                  "\n$" ""
-                 (shell-command-to-string (concat merlin-command " -version")))))
+                 (shell-command-to-string (concat (merlin-command) " -version")))))
 
 ;;;;;;;;;;;;;;;;
 ;; MODE SETUP ;;
