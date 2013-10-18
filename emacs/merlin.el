@@ -29,9 +29,13 @@
 
 ;; tq and cl are mandatory
 (require 'tq)
-(require 'cl)
+;; The compiler complains about "cl package required at runtime".
+(with-no-warnings
+  (require 'cl))
 ;; auto-complete is not
 (require 'auto-complete nil 'noerror)
+;; for compilation-{error,warning}-face
+(require 'compile)
 
 (defgroup merlin nil
   "merlin binding mode allowing completion and typing in OCaml files."
@@ -216,6 +220,8 @@ In particular you can specify nil, meaning that the locked zone is not represent
 ;; Misc
 (defvar merlin-project-file nil "The .merlin file for current buffer.")
 
+;; Forward declarations, for avoiding errors from the byte compiler.
+(defvar merlin-mode)
 
 ;;;;;;;;;;;
 ;; UTILS ;;
@@ -1013,7 +1019,7 @@ If QUIET is non nil, then an overlay and the merlin types can be used."
                        (cond ((and typ (equal (cdr typ) "parser"))
                               (message "Error: the content of the region failed to parse."))
                              (msg (message "Error: %s" (cdr msg)))
-                             (message "Unexpected error"))))))
+                             ((message "Unexpected error")))))))
     (merlin-type-expression substring on-success on-error)))
 
 (defun merlin-type-expr (exp)
@@ -1177,7 +1183,7 @@ Returns the position."
     ((progn (merlin-tell-definitions 2)
             (goto-char (merlin-seek-exact point))
             (merlin-phrase-goto 'next 0)))
-    (t (end-of-buffer))))
+    (t (goto-char (point-max)))))
 
 (defun merlin-phrase-prev ()
   "Go to the beginning of the previous phrase."
@@ -1378,3 +1384,9 @@ Short cuts:
 
 (provide 'merlin)
 ;;; merlin.el ends here
+
+;; We use cl. So disable byte compiler error: "function from cl
+;; package called at runtime".
+;; Local Variables:
+;; byte-compile-warnings: (not cl-functions)
+;; End:
