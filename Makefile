@@ -84,8 +84,8 @@ uninstall:
 	rm -rf $(SHARE_DIR)/ocamlmerlin $(BIN_DIR)/omake-merlin $(BIN_DIR)/ocamlmerlin $(SHARE_DIR)/emacs/site-lisp/merlin.el
 
 prepare-travis:
-	sudo add-apt-repository ppa:avsm/ppa
+	sudo add-apt-repository --yes ppa:avsm/ppa
 	sudo apt-get update
-	sudo apt-get install ocaml opam
+	sudo apt-get --yes install ocaml opam
 	opam init
-	eval $$(opam config -env) && opam install ocamlfind yojson menhir
+	eval $$(opam config -env) && opam install --yes ocamlfind yojson menhir
