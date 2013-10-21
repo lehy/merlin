@@ -130,9 +130,9 @@ install:
 
 before_script:
   - if [ "$EMACS" = "emacs-snapshot" ]; then
-        make downloads-latest;
+        make -C emacs downloads-latest;
     else
-        make downloads;
+        make -C emacs downloads;
     fi
 
 ###
