@@ -95,8 +95,8 @@ install:
 #       sudo apt-get -qq install xemacs21-basesupport xemacs21-basesupport-el xemacs21-supportel xemacs21-support xemacs21-mulesupport-el xemacs21-mulesupport xemacs21-mule-canna-wnn xemacs21-mule-canna-wnn;
 #   fi
   - sudo add-apt-repository --yes ppa:avsm/ppa &&
-    sudo apt-get update &&
-    sudo apt-get --yes install ocaml opam &&
+    sudo apt-get -qq update &&
+    sudo apt-get -qq --yes install ocaml opam &&
     opam init &&
     opam config exec "opam install --yes ocamlfind yojson menhir"
   - if [ "$EMACS" = "emacs22" ]; then
