@@ -1,4 +1,4 @@
-[![Build Status](https://secure.travis-ci.org/my-github-id/my-library.png?branch=master,emacs-tests)](http://travis-ci.org/lehy/merlin)
+[![Build Status](https://secure.travis-ci.org/lehy/merlin.png?branch=master,emacs-tests)](http://travis-ci.org/lehy/merlin)
 
 ![merlin completion in gvim](http://88.191.77.33/~rks/merlin-complete.png)
 
