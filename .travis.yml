@@ -142,6 +142,7 @@ before_script:
 ###
 
 script:
+  make prepare-travis
   ./configure
   make
   make check
