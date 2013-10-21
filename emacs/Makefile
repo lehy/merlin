@@ -13,9 +13,10 @@ TRAVIS_FILE=.travis.yml
 TEST_DIR=ert-tests
 TEST_DEP_1=ert
 TEST_DEP_1_STABLE_URL=http://bzr.savannah.gnu.org/lh/emacs/emacs-24/download/head:/ert.el-20110112160650-056hnl9qhpjvjicy-2/ert.el
-TEST_DEP_1_LATEST_URL=https://raw.github.com/emacsmirror/emacs/master/lisp/emacs-lisp/ert.el
-TEST_DEP_AC=auto-complete
-TEST_DEP_AC_URL=http://cx4a.org/pub/auto-complete/auto-complete-1.3.1.tar.bz2
+TEST_DEP_1_LATEST_URL=https://raw.github.com/mirrors/emacs/master/lisp/emacs-lisp/ert.el
+TEST_DEP_2=auto-complete
+TEST_DEP_2_STABLE_URL=http://cx4a.org/pub/auto-complete/auto-complete-1.3.1.tar.bz2
+TEST_DEP_2_LATEST_URL=$(TEST_DEP_2_STABLE_URL)
 
 .PHONY : build downloads downloads-latest autoloads test-autoloads test-travis \
          test test-interactive clean edit test-dep-1 test-dep-2 test-dep-3     \
@@ -32,19 +33,19 @@ test-dep-1 :
 	$(EMACS) $(EMACS_BATCH)  -L . -L .. -l $(TEST_DEP_1) || \
 	(echo "Can't load test dependency $(TEST_DEP_1).el, run 'make downloads' to fetch it" ; exit 1)
 
-test-dep-ac:
+test-dep-2:
 	@cd $(TEST_DIR)                                      && \
-	$(EMACS) $(EMACS_BATCH)  -L . -L .. -l $(TEST_DEP_AC) || \
-	(echo "Can't load test dependency $(TEST_DEP_AC).el, run 'make downloads' to fetch it" ; exit 1)
+	$(EMACS) $(EMACS_BATCH)  -L . -L .. -l $(TEST_DEP_2) || \
+	(echo "Can't load test dependency $(TEST_DEP_2).el, run 'make downloads' to fetch it" ; exit 1)
 
 downloads :
 	mkdir -p $(TEST_DIR) && $(CURL) '$(TEST_DEP_1_STABLE_URL)' > $(TEST_DIR)/$(TEST_DEP_1).el
-	$(CURL) '$(TEST_DEP_AC_URL)' -o - | tar xjf - -C $(TEST_DIR) \
+	$(CURL) '$(TEST_DEP_2_STABLE_URL)' -o - | tar xjf - -C $(TEST_DIR) \
 	  --no-anchored --transform 's#.*/##' auto-complete.el auto-complete-config.el fuzzy.el popup.el
 
 downloads-latest :
 	mkdir -p $(TEST_DIR) && $(CURL) '$(TEST_DEP_1_LATEST_URL)' > $(TEST_DIR)/$(TEST_DEP_1).el
-	$(CURL) '$(TEST_DEP_AC_URL)' -o - | tar xjf - -C $(TEST_DIR) \
+	$(CURL) '$(TEST_DEP_2_LATEST_URL)' -o - | tar xjf - -C $(TEST_DIR) \
 	  --no-anchored --transform 's#.*/##' auto-complete.el auto-complete-config.el fuzzy.el popup.el
 
 autoloads :
@@ -60,17 +61,20 @@ test-autoloads : autoloads
 test-travis :
 	@if test -z "$$TRAVIS" && test -e $(TRAVIS_FILE); then travis-lint $(TRAVIS_FILE); fi
 
-test : build test-dep-1 test-dep-ac test-autoloads
+test : build test-dep-1 test-dep-2 test-autoloads
 	@cd $(TEST_DIR)                                   && \
 	(for test_lib in *-test.el; do                       \
 	    $(EMACS) $(EMACS_BATCH) -L . -L .. -l cl -l $(TEST_DEP_1) -l $$test_lib --eval \
 	    "(flet ((ert--print-backtrace (&rest args)       \
 	      (insert \"no backtrace in batch mode\")))      \
-	       (ert-run-tests-batch-and-exit '(and \"$(TESTS)\" (not (tag :interactive)))) (kill-emacs))" || exit 1; \
+	       (ert-run-tests-batch-and-exit '(and \"$(TESTS)\" (not (tag :interactive)))))" || exit 1; \
 	done)
 
 clean :
-	@rm -f $(AUTOLOADS_FILE) *.elc *~ */*.elc */*~ $(TEST_DIR)/$(TEST_DEP_1).el            \
-        $(TEST_DIR)/$(TEST_DEP_2).el $(TEST_DIR)/$(TEST_DEP_3).el $(TEST_DIR)/$(TEST_DEP_4).el \
-        $(TEST_DIR)/$(TEST_DEP_5).el $(TEST_DIR)/$(TEST_DEP_6).el $(TEST_DIR)/$(TEST_DEP_7).el \
-        $(TEST_DIR)/$(TEST_DEP_8).el $(TEST_DIR)/$(TEST_DEP_9).el
+	@rm -f $(AUTOLOADS_FILE) *.elc *~ */*.elc */*~			\
+         $(TEST_DIR)/$(TEST_DEP_1).el $(TEST_DIR)/auto-complete.el	\
+         $(TEST_DIR)/auto-complete-config.el $(TEST_DIR)/fuzzy.el	\
+         $(TEST_DIR)/popup.el $(TEST_DIR)/$(TEST_DEP_3).el		\
+         $(TEST_DIR)/$(TEST_DEP_4).el $(TEST_DIR)/$(TEST_DEP_5).el	\
+         $(TEST_DIR)/$(TEST_DEP_6).el $(TEST_DIR)/$(TEST_DEP_7).el	\
+         $(TEST_DIR)/$(TEST_DEP_8).el $(TEST_DIR)/$(TEST_DEP_9).el
