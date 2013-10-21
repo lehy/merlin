@@ -22,7 +22,7 @@ TEST_DEP_AC_URL=http://cx4a.org/pub/auto-complete/auto-complete-1.3.1.tar.bz2
          test-dep-4 test-dep-5 test-dep-6 test-dep-7 test-dep-8 test-dep-9
 
 build :
-	$(EMACS) $(EMACS_BATCH) --eval             \
+	$(EMACS) $(EMACS_BATCH) -L $(TEST_DIR) --eval             \
 	    "(progn                                \
 	      (setq byte-compile-error-on-warn t)  \
 	      (batch-byte-compile))" *.el
