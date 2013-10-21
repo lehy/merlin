@@ -142,6 +142,9 @@ before_script:
 ###
 
 script:
+  ./configure
+  make
+  make check
   $EMACS --version && make -C emacs test EMACS="$EMACS"
 
 ###
