@@ -14,6 +14,8 @@ TEST_DIR=ert-tests
 TEST_DEP_1=ert
 TEST_DEP_1_STABLE_URL=http://bzr.savannah.gnu.org/lh/emacs/emacs-24/download/head:/ert.el-20110112160650-056hnl9qhpjvjicy-2/ert.el
 TEST_DEP_1_LATEST_URL=https://raw.github.com/emacsmirror/emacs/master/lisp/emacs-lisp/ert.el
+TEST_DEP_AC=auto-complete
+TEST_DEP_AC_URL=http://cx4a.org/pub/auto-complete/auto-complete-1.3.1.tar.bz2
 
 .PHONY : build downloads downloads-latest autoloads test-autoloads test-travis \
          test test-interactive clean edit test-dep-1 test-dep-2 test-dep-3     \
@@ -30,11 +32,20 @@ test-dep-1 :
 	$(EMACS) $(EMACS_BATCH)  -L . -L .. -l $(TEST_DEP_1) || \
 	(echo "Can't load test dependency $(TEST_DEP_1).el, run 'make downloads' to fetch it" ; exit 1)
 
+test-dep-ac:
+	@cd $(TEST_DIR)                                      && \
+	$(EMACS) $(EMACS_BATCH)  -L . -L .. -l $(TEST_DEP_AC) || \
+	(echo "Can't load test dependency $(TEST_DEP_AC).el, run 'make downloads' to fetch it" ; exit 1)
+
 downloads :
 	mkdir -p $(TEST_DIR) && $(CURL) '$(TEST_DEP_1_STABLE_URL)' > $(TEST_DIR)/$(TEST_DEP_1).el
+	$(CURL) '$(TEST_DEP_AC_URL)' -o - | tar xjf - -C $(TEST_DIR) \
+	  --no-anchored --transform 's#.*/##' auto-complete.el auto-complete-config.el fuzzy.el popup.el
 
 downloads-latest :
 	mkdir -p $(TEST_DIR) && $(CURL) '$(TEST_DEP_1_LATEST_URL)' > $(TEST_DIR)/$(TEST_DEP_1).el
+	$(CURL) '$(TEST_DEP_AC_URL)' -o - | tar xjf - -C $(TEST_DIR) \
+	  --no-anchored --transform 's#.*/##' auto-complete.el auto-complete-config.el fuzzy.el popup.el
 
 autoloads :
 	$(EMACS) $(EMACS_BATCH) --eval                       \
@@ -49,7 +60,7 @@ test-autoloads : autoloads
 test-travis :
 	@if test -z "$$TRAVIS" && test -e $(TRAVIS_FILE); then travis-lint $(TRAVIS_FILE); fi
 
-test : build test-dep-1 test-autoloads
+test : build test-dep-1 test-dep-ac test-autoloads
 	@cd $(TEST_DIR)                                   && \
 	(for test_lib in *-test.el; do                       \
 	    $(EMACS) $(EMACS_BATCH) -L . -L .. -l cl -l $(TEST_DEP_1) -l $$test_lib --eval \
