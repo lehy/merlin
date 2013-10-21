@@ -142,11 +142,7 @@ before_script:
 ###
 
 script:
-  make prepare-travis
-  ./configure
-  make
-  make check
-  $EMACS --version && make -C emacs test EMACS="$EMACS"
+  make prepare-travis && ./configure && make && make check && $EMACS --version && make -C emacs test EMACS="$EMACS"
 
 ###
 ### settings
